@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Agriculture AI</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- html2pdf -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #e0f2e9 0%, #a8e6cf 100%);
+            min-height: 100vh;
+            color: #1a4a38;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(31, 100, 63, 0.1);
+            border-radius: 20px;
+        }
+        
+        .input-glass {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            border-radius: 10px;
+            padding: 10px;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .input-glass:focus {
+            box-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
+            border-color: #34d399;
+        }
+
+        .btn-green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            transition: transform 0.2s, shadow 0.2s;
+        }
+        .btn-green:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+        }
+
+        /* Voice Animation */
+        .listening {
+            animation: pulse-red 1.5s infinite;
+        }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- Navbar -->
+    <nav class="glass p-4 mb-8 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-leaf text-3xl text-green-600"></i>
+            <h1 class="text-2xl font-bold" data-i18n="app_title">Smart Agriculture AI</h1>
+        </div>
+        <div>
+            <select id="languageSelector" class="input-glass w-auto font-semibold cursor-pointer" onchange="changeLanguage()">
+                <option value="en">English</option>
+                <option value="hi">हिंदी (Hindi)</option>
+                <option value="te">తెలుగు (Telugu)</option>
+            </select>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Input Section -->
+        <div class="lg:col-span-4 space-y-6">
+            <div class="glass p-6 relative">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold" data-i18n="farm_data">Farm Data Input</h2>
+                    <button id="micBtn" class="bg-gray-100 p-3 rounded-full hover:bg-red-50 text-gray-600 hover:text-red-500 transition-colors" onclick="toggleVoiceInput()" title="Voice Input">
+                        <i class="fa-solid fa-microphone text-xl"></i>
+                    </button>
+                </div>
+                
+                <p class="text-sm text-gray-600 mb-4" data-i18n="voice_hint">Try saying: "Nitrogen 90, Temperature 30, Humidity 70, Rainfall 200, Area 1.5"</p>
+
+                <form id="farmForm" class="space-y-4">
+                    <div class="grid grid-cols-3 gap-2">
+                        <div><label class="text-sm font-semibold" data-i18n="n">Nitrogen (N)</label><input type="number" id="val_n" class="input-glass mt-1" value="90"></div>
+                        <div><label class="text-sm font-semibold" data-i18n="p">Phosphorus (P)</label><input type="number" id="val_p" class="input-glass mt-1" value="42"></div>
+                        <div><label class="text-sm font-semibold" data-i18n="k">Potassium (K)</label><input type="number" id="val_k" class="input-glass mt-1" value="43"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <div><label class="text-sm font-semibold" data-i18n="temp">Temp (°C)</label><input type="number" step="0.1" id="val_temp" class="input-glass mt-1" value="20.8"></div>
+                        <div><label class="text-sm font-semibold" data-i18n="humidity">Humidity (%)</label><input type="number" step="0.1" id="val_hum" class="input-glass mt-1" value="82.0"></div>
+                        <div><label class="text-sm font-semibold" data-i18n="ph">Soil pH</label><input type="number" step="0.1" id="val_ph" class="input-glass mt-1" value="6.5"></div>
+                        <div><label class="text-sm font-semibold" data-i18n="rainfall">Rainfall (mm)</label><input type="number" step="0.1" id="val_rain" class="input-glass mt-1" value="202.9"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="text-sm font-semibold" data-i18n="state">State</label>
+                            <select id="val_state" class="input-glass mt-1" onchange="onStateChange()">
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-semibold" data-i18n="district">District</label>
+                            <select id="val_district" class="input-glass mt-1" onchange="fetchWeatherForDistrict()">
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm font-semibold" data-i18n="season">Season</label>
+                            <select id="val_season" class="input-glass mt-1">
+                                <option value="Kharif     ">Kharif</option>
+                                <option value="Rabi       ">Rabi</option>
+                                <option value="Whole Year ">Whole Year</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div><label class="text-sm font-semibold" data-i18n="area">Area (Acres)</label><input type="number" step="0.1" id="val_area" class="input-glass mt-1" value="1.5"></div>
+                    
+                    <button type="button" class="btn-green w-full py-3 rounded-xl font-bold mt-4 shadow-lg flex justify-center items-center gap-2" onclick="analyzeData()">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span data-i18n="analyze_btn">Analyze & Predict</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Output Section -->
+        <div class="lg:col-span-8 space-y-6" id="reportContent">
+            
+            <!-- Recommendations Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Crop Card -->
+                <div class="glass p-6 flex flex-col items-center text-center relative">
+                    <button class="absolute top-4 right-4 text-green-600 hover:text-green-800" onclick="readAloud('cropText')"><i class="fa-solid fa-volume-high text-xl"></i></button>
+                    <h3 class="text-lg font-bold text-gray-500 uppercase tracking-wide mb-2" data-i18n="rec_crop">Recommended Crop</h3>
+                    <img id="cropImg" src="crops/default.jpg" alt="Crop" class="w-32 h-32 object-cover rounded-full shadow-md mb-4 border-4 border-white">
+                    <h2 id="cropName" class="text-3xl font-extrabold text-green-700 capitalize">---</h2>
+                    <p id="cropText" class="mt-2 text-sm font-medium" data-dynamic="true"></p>
+                </div>
+
+                <!-- Yield Card -->
+                <div class="glass p-6 flex flex-col justify-center relative">
+                    <button class="absolute top-4 right-4 text-green-600 hover:text-green-800" onclick="readAloud('yieldText')"><i class="fa-solid fa-volume-high text-xl"></i></button>
+                    <h3 class="text-lg font-bold text-gray-500 uppercase tracking-wide mb-2" data-i18n="est_yield">Estimated Yield</h3>
+                    <div class="flex items-baseline gap-2">
+                        <h2 id="yieldValue" class="text-4xl font-extrabold text-green-700">---</h2>
+                        <span class="font-semibold text-gray-600">tons</span>
+                    </div>
+                    <p id="yieldText" class="mt-2 text-sm text-gray-700" data-dynamic="true"></p>
+                </div>
+            </div>
+
+            <!-- Insights Row -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass p-5 relative">
+                    <button class="absolute top-3 right-3 text-green-600" onclick="readAloud('fertText')"><i class="fa-solid fa-volume-high"></i></button>
+                    <h3 class="font-bold flex items-center gap-2"><i class="fa-solid fa-sack-xmark text-yellow-600"></i> <span data-i18n="fert_rec">Fertilizer</span></h3>
+                    <p id="fertText" class="text-sm mt-2 font-medium" data-dynamic="true">---</p>
+                </div>
+                <div class="glass p-5 relative">
+                    <button class="absolute top-3 right-3 text-green-600" onclick="readAloud('weatherText')"><i class="fa-solid fa-volume-high"></i></button>
+                    <h3 class="font-bold flex items-center gap-2"><i class="fa-solid fa-cloud-sun text-blue-500"></i> <span data-i18n="weather_insights">Weather</span></h3>
+                    <p id="weatherText" class="text-sm mt-2 font-medium" data-dynamic="true">---</p>
+                </div>
+                <div class="glass p-5 relative">
+                    <button class="absolute top-3 right-3 text-green-600" onclick="readAloud('soilText')"><i class="fa-solid fa-volume-high"></i></button>
+                    <h3 class="font-bold flex items-center gap-2"><i class="fa-solid fa-seedling text-green-600"></i> <span data-i18n="soil_health">Soil Health</span></h3>
+                    <div class="mt-2 flex items-center gap-3">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5">
+                            <div id="soilBar" class="bg-green-600 h-2.5 rounded-full" style="width: 0%"></div>
+                        </div>
+                        <span id="soilScore" class="font-bold text-sm">0%</span>
+                    </div>
+                    <p id="soilText" class="text-xs mt-2 text-gray-600 hidden" data-dynamic="true">---</p>
+                </div>
+            </div>
+
+            <!-- SHAP Explainability -->
+            <div class="glass p-6">
+                <h3 class="text-lg font-bold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-brain text-purple-500"></i>
+                    <span data-i18n="ai_explanation">AI Explanation (SHAP)</span>
+                </h3>
+                <div class="w-full h-64">
+                    <canvas id="shapChart"></canvas>
+                </div>
+                <p id="shapText" class="mt-4 text-sm font-medium text-gray-700 bg-white bg-opacity-50 p-3 rounded-lg"></p>
+            </div>
+            
+            <div class="flex justify-end">
+                <button class="glass px-6 py-2 font-bold text-green-700 hover:bg-white transition-colors" onclick="downloadPDF()">
+                    <i class="fa-solid fa-download mr-2"></i> <span data-i18n="download_pdf">Download PDF Report</span>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Logic Script -->
+    <script>
+        // ----------------------------------------------------
+        // Multilingual Dictionary
+        // ----------------------------------------------------
+        const translations = {
+            en: {
+                app_title: "Smart Agriculture AI",
+                farm_data: "Farm Data Input",
+                voice_hint: 'Try saying: "Nitrogen 90, Temperature 30, Humidity 70, Rainfall 200, Area 1.5"',
+                n: "Nitrogen (N)", p: "Phosphorus (P)", k: "Potassium (K)",
+                temp: "Temp (°C)", humidity: "Humidity (%)", ph: "Soil pH", rainfall: "Rainfall (mm)",
+                state: "State", district: "District", season: "Season", area: "Area (Acres)",
+                analyze_btn: "Analyze & Predict",
+                rec_crop: "Recommended Crop",
+                est_yield: "Estimated Yield",
+                fert_rec: "Fertilizer",
+                weather_insights: "Weather",
+                soil_health: "Soil Health",
+                ai_explanation: "AI Decision Explanation (SHAP)",
+                download_pdf: "Download PDF Report",
+                // Dynamic templates
+                crop_template: "Based on your soil and weather, {0} is the most optimal crop to grow.",
+                yield_template: "Expected production is {0} tons across {1} acres.",
+                voice_listening: "Listening... speak now.",
+                voice_error: "Could not recognize speech. Please try again."
+            },
+            hi: {
+                app_title: "स्मार्ट एग्रीकल्चर एआई",
+                farm_data: "खेत का डेटा",
+                voice_hint: 'बोलने का प्रयास करें: "नाइट्रोजन 90, तापमान 30, नमी 70, वर्षा 200, क्षेत्रफल 1.5"',
+                n: "नाइट्रोजन (N)", p: "फास्फोरस (P)", k: "पोटेशियम (K)",
+                temp: "तापमान (°C)", humidity: "नमी (%)", ph: "मिट्टी का pH", rainfall: "वर्षा (mm)",
+                state: "राज्य", district: "ज़िला", season: "मौसम", area: "क्षेत्रफल (एकड़)",
+                analyze_btn: "विश्लेषण और भविष्यवाणी करें",
+                rec_crop: "अनुशंसित फसल",
+                est_yield: "अनुमानित उपज",
+                fert_rec: "उर्वरक",
+                weather_insights: "मौसम",
+                soil_health: "मिट्टी का स्वास्थ्य",
+                ai_explanation: "एआई निर्णय स्पष्टीकरण (SHAP)",
+                download_pdf: "पीडीएफ रिपोर्ट डाउनलोड करें",
+                // Dynamic templates
+                crop_template: "आपकी मिट्टी और मौसम के आधार पर, {0} उगाने के लिए सबसे अच्छी फसल है।",
+                yield_template: "{1} एकड़ में अनुमानित उत्पादन {0} टन है।",
+                voice_listening: "सुन रहा हूँ... अब बोलें।",
+                voice_error: "आवाज पहचानी नहीं जा सकी। कृपया पुनः प्रयास करें।"
+            },
+            te: {
+                app_title: "స్మార్ట్ అగ్రికల్చర్ AI",
+                farm_data: "పొలం డేటా",
+                voice_hint: 'ఇలా చెప్పడానికి ప్రయత్నించండి: "నైట్రోజన్ 90, ఉష్ణోగ్రత 30, తేమ 70, వర్షపాతం 200, విస్తీర్ణం 1.5"',
+                n: "నైట్రోజన్ (N)", p: "భాస్వరం (P)", k: "పొటాషియం (K)",
+                temp: "ఉష్ణోగ్రత (°C)", humidity: "తేమ (%)", ph: "నేల pH", rainfall: "వర్షపాతం (mm)",
+                state: "రాష్ట్రం", district: "జిల్లా", season: "సీజన్", area: "విస్తీర్ణం (ఎకరాలు)",
+                analyze_btn: "విశ్లేషించండి & అంచనా వేయండి",
+                rec_crop: "సిఫార్సు చేయబడిన పంట",
+                est_yield: "అంచనా దిగుబడి",
+                fert_rec: "ఎరువులు",
+                weather_insights: "వాతావరణం",
+                soil_health: "నేల ఆరోగ్యం",
+                ai_explanation: "AI నిర్ణయం వివరణ (SHAP)",
+                download_pdf: "PDF రిపోర్ట్ డౌన్‌లోడ్ చేయండి",
+                // Dynamic templates
+                crop_template: "మీ నేల మరియు వాతావరణం ఆధారంగా, {0} పండించడానికి అత్యంత అనువైన పంట.",
+                yield_template: "{1} ఎకరాల్లో అంచనా ఉత్పత్తి {0} టన్నులు.",
+                voice_listening: "వింటున్నాను... ఇప్పుడు మాట్లాడండి.",
+                voice_error: "వాయిస్ గుర్తించబడలేదు. దయచేసి మళ్లీ ప్రయత్నించండి."
+            }
+        };
+
+        let currentLang = 'en';
+        let shapChartInstance = null;
+        
+        // For storing dynamic text to translate it if language changes
+        let stateData = {
+            crop: "", yield: "", area: "", fert_advice_en: "", weather_en: ""
+        };
+
+        function changeLanguage() {
+            currentLang = document.getElementById('languageSelector').value;
+            
+            // Static labels
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    if (el.tagName === 'INPUT' && el.type === 'button') {
+                        el.value = translations[currentLang][key];
+                    } else {
+                        el.innerHTML = translations[currentLang][key];
+                    }
+                }
+            });
+
+            // Re-render dynamic text if data exists
+            if (stateData.crop) {
+                document.getElementById('cropName').innerText = translateCrop(stateData.crop, currentLang);
+                document.getElementById('cropText').innerText = formatString(translations[currentLang].crop_template, translateCrop(stateData.crop, currentLang));
+                document.getElementById('yieldText').innerText = formatString(translations[currentLang].yield_template, stateData.yield, stateData.area);
+                
+                // Translate Fertilizer and Weather
+                document.getElementById('fertText').innerText = translateFertilizer(stateData.fert_advice_en, currentLang); 
+                document.getElementById('weatherText').innerText = translateWeather(stateData.weather_en, currentLang);
+            }
+        }
+
+        function translateFertilizer(adviceEn, lang) {
+            if (lang === 'en') return adviceEn;
+            if (adviceEn.includes("balanced")) {
+                return lang === 'hi' ? "आपकी मिट्टी संतुलित है। मानक खाद का प्रयोग करें।" : "మీ నేల సమతుల్యంగా ఉంది. సాధారణ కంపోస్ట్ ఉపయోగించండి.";
+            }
+            if (adviceEn.includes("Nitrogen")) {
+                return lang === 'hi' ? "नाइट्रोजन कम है। यूरिया या नाइट्रोजन युक्त उर्वरकों की सलाह दी जाती है।" : "నైట్రోజన్ తక్కువగా ఉంది. యూరియా లేదా నైట్రోజన్-రిచ్ ఎరువులను వాడండి.";
+            }
+            if (adviceEn.includes("Phosphorous")) {
+                return lang === 'hi' ? "फास्फोरस कम है। डीएपी (DAP) की सलाह दी जाती है।" : "భాస్వరం తక్కువగా ఉంది. DAP (Diammonium Phosphate) వాడండి.";
+            }
+            if (adviceEn.includes("Potassium")) {
+                return lang === 'hi' ? "पोटेशियम कम है। एमओपी (MOP) की सलाह दी जाती है।" : "పొటాషియం తక్కువగా ఉంది. MOP (Muriate of Potash) వాడండి.";
+            }
+            return adviceEn;
+        }
+
+        function translateWeather(weatherEn, lang) {
+            if (lang === 'en') return weatherEn;
+            if (weatherEn.includes("Normal seasonal")) {
+                return lang === 'hi' ? "सामान्य मौसमी स्थितियाँ।" : "సాధారణ వాతావరణ పరిస్థితులు.";
+            }
+            let match = weatherEn.match(/Current temp in (.+) is ([\d.]+)°C/);
+            if (match) {
+                let state = match[1];
+                let temp = match[2];
+                // Try to translate state names if needed, or leave in English
+                let stateDict = {
+                    'Andhra Pradesh': {hi: 'आंध्र प्रदेश', te: 'ఆంధ్రప్రదేశ్'},
+                    'Maharashtra': {hi: 'महाराष्ट्र', te: 'మహారాష్ట్ర'},
+                    'Uttar Pradesh': {hi: 'उत्तर प्रदेश', te: 'ఉత్తర ప్రదేశ్'}
+                };
+                let st = (stateDict[state] && stateDict[state][lang]) ? stateDict[state][lang] : state;
+                
+                if (lang === 'hi') return `${st} में वर्तमान तापमान ${temp}°C है।`;
+                if (lang === 'te') return `${st} లో ప్రస్తుత ఉష్ణోగ్రత ${temp}°C.`;
+            }
+            return weatherEn;
+        }
+
+        function formatString(template, ...args) {
+            return template.replace(/{(\d+)}/g, function(match, number) { 
+                return typeof args[number] != 'undefined' ? args[number] : match;
+            });
+        }
+
+        // Basic Crop Translation Dictionary
+        const cropDict = {
+            'rice': { en: 'Rice', hi: 'चावल', te: 'వరి' },
+            'maize': { en: 'Maize', hi: 'मक्का', te: 'మొక్కజొన్న' },
+            'chickpea': { en: 'Chickpea', hi: 'चना', te: 'శనగలు' },
+            'kidneybeans': { en: 'Kidney Beans', hi: 'राजमा', te: 'కిడ్నీ బీన్స్' },
+            'pigeonpeas': { en: 'Pigeon Peas', hi: 'अरहर', te: 'కందులు' },
+            'mothbeans': { en: 'Moth Beans', hi: 'मोठ बीन', te: 'మోత్ బీన్స్' },
+            'mungbean': { en: 'Mung Bean', hi: 'मूंग', te: 'పెసలు' },
+            'blackgram': { en: 'Black Gram', hi: 'उड़द', te: 'మినుములు' },
+            'lentil': { en: 'Lentil', hi: 'मसूर', te: 'మసూర్ పప్పు' },
+            'pomegranate': { en: 'Pomegranate', hi: 'अनार', te: 'దానిమ్మ' },
+            'banana': { en: 'Banana', hi: 'केला', te: 'అరటి' },
+            'mango': { en: 'Mango', hi: 'आम', te: 'మామిడి' },
+            'grapes': { en: 'Grapes', hi: 'अंगूर', te: 'ద్రాక్ష' },
+            'watermelon': { en: 'Watermelon', hi: 'तरबूज', te: 'పుచ్చకాయ' },
+            'muskmelon': { en: 'Muskmelon', hi: 'खरबूजा', te: 'కర్బూజ' },
+            'apple': { en: 'Apple', hi: 'सेब', te: 'ఆపిల్' },
+            'orange': { en: 'Orange', hi: 'संतरा', te: 'నారింజ' },
+            'papaya': { en: 'Papaya', hi: 'पपीता', te: 'బొప్పాయి' },
+            'coconut': { en: 'Coconut', hi: 'नारियल', te: 'కొబ్బరి' },
+            'cotton': { en: 'Cotton', hi: 'कपास', te: 'పత్తి' },
+            'jute': { en: 'Jute', hi: 'जूट', te: 'జనపనార' },
+            'coffee': { en: 'Coffee', hi: 'कॉफी', te: 'కాఫీ' }
+        };
+
+        function translateCrop(cropKey, lang) {
+            let key = cropKey.toLowerCase().replace(/\s/g, '');
+            if (cropDict[key] && cropDict[key][lang]) {
+                return cropDict[key][lang];
+            }
+            return cropKey;
+        }
+
+        // ----------------------------------------------------
+        // Web Speech API (Voice Input)
+        // ----------------------------------------------------
+        let recognition;
+        let isListening = false;
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+        }
+
+        function toggleVoiceInput() {
+            if (!recognition) {
+                alert("Speech Recognition API not supported in this browser.");
+                return;
+            }
+            
+            let micBtn = document.getElementById('micBtn');
+            
+            if (isListening) {
+                recognition.stop();
+                return; // stopping will trigger onend
+            }
+
+            // Set recognition language based on selector
+            if (currentLang === 'hi') recognition.lang = 'hi-IN';
+            else if (currentLang === 'te') recognition.lang = 'te-IN';
+            else recognition.lang = 'en-US';
+
+            try {
+                recognition.start();
+                isListening = true;
+                micBtn.classList.add('listening');
+            } catch(e) {
+                console.error("Could not start recognition:", e);
+            }
+            
+            recognition.onresult = function(event) {
+                let newTranscript = "";
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        newTranscript += event.results[i][0].transcript + " ";
+                    }
+                }
+                console.log("Transcript: ", newTranscript);
+                parseVoiceToInputs(newTranscript.toLowerCase());
+                // We do NOT remove 'listening' class here because continuous = true
+            };
+
+            recognition.onerror = function(event) {
+                console.error(event.error);
+                isListening = false;
+                micBtn.classList.remove('listening');
+                alert(translations[currentLang].voice_error);
+            };
+            
+            recognition.onend = function() {
+                isListening = false;
+                micBtn.classList.remove('listening');
+            }
+        }
+
+        function parseVoiceToInputs(text) {
+            // Very simple RegEx parsing logic for demonstration
+            // Matches word followed by number. e.g. "nitrogen 90" or "నైట్రోజన్ 90"
+            const map = [
+                { id: 'val_n', regex: /(nitrogen|n|నైట్రోజన్|नाइट्रोजन)[\s:]*(\d+\.?\d*)/i },
+                { id: 'val_p', regex: /(phosphorus|p|భాస్వరం|फास्फोरस)[\s:]*(\d+\.?\d*)/i },
+                { id: 'val_k', regex: /(potassium|k|పొటాషియం|पोटेशियम)[\s:]*(\d+\.?\d*)/i },
+                { id: 'val_temp', regex: /(temperature|temp|ఉష్ణోగ్రత|तापमान)[\s:]*(\d+\.?\d*)/i },
+                { id: 'val_hum', regex: /(humidity|तेम|नमी)[\s:]*(\d+\.?\d*)/i },
+                { id: 'val_ph', regex: /(ph)[\s:]*(\d+\.?\d*)/i },
+                { id: 'val_rain', regex: /(rainfall|rain|వర్షపాతం|वर्षा)[\s:]*(\d+\.?\d*)/i },
+                { id: 'val_area', regex: /(area|విస్తీర్ణం|क्षेत्रफल)[\s:]*(\d+\.?\d*)/i }
+            ];
+
+            map.forEach(item => {
+                let match = text.match(item.regex);
+                if (match && match[2]) {
+                    document.getElementById(item.id).value = match[2];
+                    // Flash the input to show it was updated
+                    let el = document.getElementById(item.id);
+                    el.style.backgroundColor = '#d1fae5';
+                    setTimeout(() => el.style.backgroundColor = '', 1000);
+                }
+            });
+        }
+
+        // ----------------------------------------------------
+        // SpeechSynthesis API (Voice Output via Backend gTTS)
+        // ----------------------------------------------------
+        let currentAudio = null;
+
+        async function readAloud(elementId) {
+            let text = document.getElementById(elementId).innerText;
+            if (!text || text === "---") return;
+            
+            // Stop current playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+
+            try {
+                // Fetch the mp3 from backend gTTS
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, lang: currentLang })
+                });
+                
+                if (!response.ok) throw new Error("TTS failed");
+                
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                currentAudio = new Audio(url);
+                currentAudio.play();
+            } catch (err) {
+                console.error("TTS Error:", err);
+                alert("Failed to synthesize speech. Please ensure the backend is running.");
+            }
+        }
+
+        // ----------------------------------------------------
+        // Main API Logic & Chart.js
+        // ----------------------------------------------------
+        async function analyzeData() {
+            const payload = {
+                N: parseFloat(document.getElementById('val_n').value),
+                P: parseFloat(document.getElementById('val_p').value),
+                K: parseFloat(document.getElementById('val_k').value),
+                temperature: parseFloat(document.getElementById('val_temp').value),
+                humidity: parseFloat(document.getElementById('val_hum').value),
+                ph: parseFloat(document.getElementById('val_ph').value),
+                rainfall: parseFloat(document.getElementById('val_rain').value),
+                state: document.getElementById('val_state').value,
+                district: document.getElementById('val_district').value,
+                season: document.getElementById('val_season').value,
+                area: parseFloat(document.getElementById('val_area').value)
+            };
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                // Save State
+                stateData.crop = data.recommended_crop;
+                stateData.yield = data.predicted_production.toFixed(2);
+                stateData.area = payload.area;
+                stateData.fert_advice_en = data.fertilizer_advice;
+                stateData.weather_en = data.weather_insights;
+
+                // Update UI Components
+                document.getElementById('cropName').innerText = translateCrop(data.recommended_crop, currentLang);
+                
+                // Crop Image logic
+                let cropKey = data.recommended_crop.toLowerCase().replace(/\s/g, '');
+                // Basic extensions mapping, could be dynamic in production
+                let extMap = {'jute': 'jpeg', 'kidneybeans': 'jpeg', 'mothbeans': 'jpeg', 'mungbean': 'jpeg'};
+                let ext = extMap[cropKey] || 'jpg';
+                document.getElementById('cropImg').src = `crops/${cropKey}.${ext}`;
+                document.getElementById('cropImg').onerror = function() { this.src = 'crops/default.jpg'; };
+
+                document.getElementById('yieldValue').innerText = stateData.yield;
+                
+                document.getElementById('soilScore').innerText = data.soil_health_score + "%";
+                document.getElementById('soilBar').style.width = data.soil_health_score + "%";
+                
+                // Trigger Language Update to fill templates
+                changeLanguage();
+                
+                // Render SHAP chart
+                renderShapChart(data.shap_data.features, data.shap_data.values);
+
+                // SHAP Explanation
+                let maxIdx = data.shap_data.values.indexOf(Math.max(...data.shap_data.values));
+                let minIdx = data.shap_data.values.indexOf(Math.min(...data.shap_data.values));
+                let mostPositive = data.shap_data.features[maxIdx];
+                let mostNegative = data.shap_data.features[minIdx];
+
+                let cropTranslated = translateCrop(data.recommended_crop, currentLang);
+                
+                let explEn = `The model recommended ${cropTranslated} primarily because of the ${mostPositive} levels in the soil/environment. `;
+                if (data.shap_data.values[minIdx] < 0) {
+                    explEn += `However, the current ${mostNegative} levels slightly reduce its optimal suitability, but it remains the best choice overall.`;
+                }
+                document.getElementById('shapText').innerText = explEn;
+
+            } catch (err) {
+                console.error(err);
+                alert("Error connecting to backend API.");
+            }
+        }
+
+        function renderShapChart(labels, values) {
+            const ctx = document.getElementById('shapChart').getContext('2d');
+            
+            // Map values to colors (Green for positive impact, Red for negative impact)
+            const colors = values.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)');
+
+            if (shapChartInstance) {
+                shapChartInstance.destroy();
+            }
+
+            shapChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Feature Impact on Decision',
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Horizontal bar chart!
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.4)' } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('reportContent');
+            const opt = {
+                margin:       0.5,
+                filename:     'smart_agriculture_report.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+        
+        let statesDistrictsMap = {};
+
+        async function loadStatesDistricts() {
+            try {
+                let res = await fetch('static/states_districts.json');
+                statesDistrictsMap = await res.json();
+                
+                let stateSelect = document.getElementById('val_state');
+                stateSelect.innerHTML = '';
+                for (let state in statesDistrictsMap) {
+                    let opt = document.createElement('option');
+                    opt.value = state;
+                    opt.textContent = state;
+                    stateSelect.appendChild(opt);
+                }
+                onStateChange();
+            } catch(e) {
+                console.error("Could not load states/districts", e);
+            }
+        }
+
+        function onStateChange() {
+            let state = document.getElementById('val_state').value;
+            let districtSelect = document.getElementById('val_district');
+            districtSelect.innerHTML = '';
+            
+            if (statesDistrictsMap[state]) {
+                statesDistrictsMap[state].forEach(dist => {
+                    let opt = document.createElement('option');
+                    opt.value = dist;
+                    opt.textContent = dist;
+                    districtSelect.appendChild(opt);
+                });
+            }
+            fetchWeatherForDistrict();
+        }
+
+        async function fetchWeatherForDistrict() {
+            let state = document.getElementById('val_state').value;
+            let district = document.getElementById('val_district').value;
+            if (!state || !district) return;
+
+            try {
+                let res = await fetch(`/api/weather?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}`);
+                let data = await res.json();
+                
+                if (data.temperature) {
+                    document.getElementById('val_temp').value = data.temperature;
+                    document.getElementById('val_temp').style.backgroundColor = '#d1fae5';
+                    setTimeout(() => document.getElementById('val_temp').style.backgroundColor = '', 1000);
+                }
+                if (data.humidity) {
+                    document.getElementById('val_hum').value = data.humidity;
+                    document.getElementById('val_hum').style.backgroundColor = '#d1fae5';
+                    setTimeout(() => document.getElementById('val_hum').style.backgroundColor = '', 1000);
+                }
+                if (data.rainfall !== undefined && data.rainfall !== null && data.rainfall !== 0) {
+                    // Only update rainfall if it's non-zero, since current rain is usually 0
+                    document.getElementById('val_rain').value = data.rainfall;
+                    document.getElementById('val_rain').style.backgroundColor = '#d1fae5';
+                    setTimeout(() => document.getElementById('val_rain').style.backgroundColor = '', 1000);
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        // Init Language and Data
+        window.onload = () => {
+            changeLanguage();
+            loadStatesDistricts();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Datasets (to prevent pushing huge files and exceeding GitHub limits)
+*.csv
+
+# However, do NOT ignore the generated models required for production
+!models/*.pkl
+
+# OS generated files
+.DS_Store
+Thumbs.db
