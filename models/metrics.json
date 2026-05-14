@@ -1,0 +1,1 @@
+{"Crop Recommendation": {"LightGBM": 98.64, "CatBoost": 98.18}, "Yield Prediction R2": {"LightGBM": 89.8, "CatBoost": 89.51}}

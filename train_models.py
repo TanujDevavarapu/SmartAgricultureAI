@@ -5,7 +5,9 @@ import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from lightgbm import LGBMClassifier, LGBMRegressor
+from catboost import CatBoostClassifier, CatBoostRegressor
 from sklearn.metrics import accuracy_score, r2_score
+import json
 
 # Create models directory
 os.makedirs('models', exist_ok=True)
@@ -31,15 +33,26 @@ X_rec_scaled = scaler_rec.fit_transform(X_rec)
 
 X_train, X_test, y_train, y_test = train_test_split(X_rec_scaled, y_rec_encoded, test_size=0.2, random_state=42)
 
-# Train LightGBM
+# Evaluate Algorithms for Graph (LightGBM and CatBoost)
+print("Evaluating algorithms for UI graph...")
+metrics = {"Crop Recommendation": {}, "Yield Prediction R2": {}}
+
+# 1. LightGBM
 clf = LGBMClassifier(n_estimators=100, random_state=42)
 clf.fit(X_train, y_train)
-
 y_pred = clf.predict(X_test)
-acc = accuracy_score(y_test, y_pred)
-print(f"Crop Recommendation Accuracy: {acc * 100:.2f}%")
+acc_lgbm = accuracy_score(y_test, y_pred) * 100
+metrics["Crop Recommendation"]["LightGBM"] = round(acc_lgbm, 2)
 
-# Save models & scalers
+# 2. CatBoost
+cb = CatBoostClassifier(iterations=100, random_state=42, verbose=0)
+cb.fit(X_train, y_train)
+acc_cb = accuracy_score(y_test, cb.predict(X_test)) * 100
+metrics["Crop Recommendation"]["CatBoost"] = round(acc_cb, 2)
+
+print(f"Crop Recommendation Accuracies: {metrics['Crop Recommendation']}")
+
+# Save best models & scalers (LightGBM is best)
 joblib.dump(clf, 'models/crop_recommendation_model.pkl')
 joblib.dump(scaler_rec, 'models/recommendation_scaler.pkl')
 joblib.dump(le_rec, 'models/recommendation_label_encoder.pkl')
@@ -69,7 +82,7 @@ df_prod = df_prod[df_prod['Yield'] <= q_high]
 
 # We will use State, District, Season, Crop, Area to predict Production.
 features = ['State_Name', 'District_Name', 'Season', 'Crop', 'Area']
-target = 'Production'
+target = 'Yield'
 
 X_prod = df_prod[features]
 y_prod = df_prod[target]
@@ -91,13 +104,21 @@ X_prod_scaled = scaler_prod.fit_transform(X_prod)
 
 X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X_prod_scaled, y_prod, test_size=0.2, random_state=42)
 
-# Train Regressor
+# Train LightGBM Regressor
 reg = LGBMRegressor(n_estimators=100, random_state=42)
 reg.fit(X_train_p, y_train_p)
 
 y_pred_p = reg.predict(X_test_p)
 r2 = r2_score(y_test_p, y_pred_p)
-print(f"Yield Prediction R2 Score: {r2:.4f}")
+metrics["Yield Prediction R2"]["LightGBM"] = round(r2 * 100, 2)
+
+# Train CatBoost Regressor
+cb_reg = CatBoostRegressor(iterations=100, random_state=42, verbose=0)
+cb_reg.fit(X_train_p, y_train_p)
+r2_cb = r2_score(y_test_p, cb_reg.predict(X_test_p))
+metrics["Yield Prediction R2"]["CatBoost"] = round(r2_cb * 100, 2)
+
+print(f"Yield Prediction R2 Scores: {metrics['Yield Prediction R2']}")
 
 # Save models & scalers
 joblib.dump(reg, 'models/yield_prediction_model.pkl')
@@ -107,4 +128,8 @@ joblib.dump(le_district, 'models/le_district.pkl')
 joblib.dump(le_season, 'models/le_season.pkl')
 joblib.dump(le_crop, 'models/le_crop.pkl')
 
-print("\nModel Training Complete! All artifacts saved to 'models/' directory.")
+# Save metrics for frontend
+with open('models/metrics.json', 'w') as f:
+    json.dump(metrics, f)
+
+print("\nModel Training Complete! All artifacts and metrics saved to 'models/' directory.")

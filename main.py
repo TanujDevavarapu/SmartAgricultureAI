@@ -124,7 +124,14 @@ async def predict_all(data: PredictRequest):
                 columns=['State_Name', 'District_Name', 'Season', 'Crop', 'Area']
             )
             prod_scaled = yield_scaler.transform(prod_features)
-            prod_pred   = yield_reg.predict(prod_scaled)[0]
+            yield_per_ha = yield_reg.predict(prod_scaled)[0]
+            
+            # The yield model uses historical baseline data. We dynamically adjust this 
+            # baseline based on how suitable the current real-time weather/soil is!
+            suitability_score = probas[idx]
+            yield_multiplier = min(1.0, max(0.2, suitability_score * 1.5))
+            
+            prod_pred = yield_per_ha * area_ha * yield_multiplier
 
             if prod_pred > 0:
                 chosen_crop       = candidate
@@ -134,10 +141,21 @@ async def predict_all(data: PredictRequest):
 
         # Fallback: if every single crop somehow yields ≤ 0, use the top-ranked one
         # (extremely rare edge-case) and return 0 production
+        # Wait, what if chosen_crop is None because all yields were <= 0?
         if chosen_crop is None:
             chosen_crop_idx  = ranked_indices[0]
             chosen_crop      = crop_le.inverse_transform([chosen_crop_idx])[0]
-            predicted_production = 0.0
+            
+            # Predict yield per ha for this fallback crop
+            mapped_fallback = CROP_MAPPING.get(chosen_crop, chosen_crop.title())
+            fallback_enc = le_crop.transform([mapped_fallback])[0] if mapped_fallback in le_crop.classes_ else 0
+            
+            fb_features = pd.DataFrame(
+                [[state_enc, district_enc, season_enc, fallback_enc, area_ha]],
+                columns=['State_Name', 'District_Name', 'Season', 'Crop', 'Area']
+            )
+            fb_scaled = yield_scaler.transform(fb_features)
+            predicted_production = max(0.0, yield_reg.predict(fb_scaled)[0] * area_ha)
 
         recommended_crop = chosen_crop
         crop_pred_idx    = chosen_crop_idx

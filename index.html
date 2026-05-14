@@ -205,6 +205,17 @@
                 </div>
                 <p id="shapText" class="mt-4 text-sm font-medium text-gray-700 bg-white bg-opacity-50 p-3 rounded-lg"></p>
             </div>
+
+            <!-- Model Accuracies -->
+            <div class="glass p-6">
+                <h3 class="text-lg font-bold text-gray-500 uppercase tracking-wide mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-blue-500"></i>
+                    <span data-i18n="model_acc">Algorithm Prediction Accuracies</span>
+                </h3>
+                <div class="w-full h-64">
+                    <canvas id="accuracyChart"></canvas>
+                </div>
+            </div>
             
             <div class="flex justify-end">
                 <button class="glass px-6 py-2 font-bold text-green-700 hover:bg-white transition-colors" onclick="downloadPDF()">
@@ -235,6 +246,7 @@
                 weather_insights: "Weather",
                 soil_health: "Soil Health",
                 ai_explanation: "AI Decision Explanation (SHAP)",
+                model_acc: "Algorithm Prediction Accuracies",
                 download_pdf: "Download PDF Report",
                 // Dynamic templates
                 crop_template: "Based on your soil and weather, {0} is the most optimal crop to grow.",
@@ -256,6 +268,7 @@
                 weather_insights: "मौसम",
                 soil_health: "मिट्टी का स्वास्थ्य",
                 ai_explanation: "एआई निर्णय स्पष्टीकरण (SHAP)",
+                model_acc: "एल्गोरिथम भविष्यवाणी सटीकता",
                 download_pdf: "पीडीएफ रिपोर्ट डाउनलोड करें",
                 // Dynamic templates
                 crop_template: "आपकी मिट्टी और मौसम के आधार पर, {0} उगाने के लिए सबसे अच्छी फसल है।",
@@ -277,6 +290,7 @@
                 weather_insights: "వాతావరణం",
                 soil_health: "నేల ఆరోగ్యం",
                 ai_explanation: "AI నిర్ణయం వివరణ (SHAP)",
+                model_acc: "అల్గోరిథం అంచనా ఖచ్చితత్వం",
                 download_pdf: "PDF రిపోర్ట్ డౌన్‌లోడ్ చేయండి",
                 // Dynamic templates
                 crop_template: "మీ నేల మరియు వాతావరణం ఆధారంగా, {0} పండించడానికి అత్యంత అనువైన పంట.",
@@ -641,14 +655,31 @@
 
         function downloadPDF() {
             const element = document.getElementById('reportContent');
+            
+            // Temporary fix for html2canvas rendering issue with backdrop-filter
+            const glassElements = element.querySelectorAll('.glass');
+            glassElements.forEach(el => {
+                el.style.backdropFilter = 'none';
+                el.style.webkitBackdropFilter = 'none';
+                el.style.backgroundColor = 'rgba(255, 255, 255, 0.95)';
+            });
+
             const opt = {
                 margin:       0.5,
                 filename:     'smart_agriculture_report.pdf',
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2 },
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
                 jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
             };
-            html2pdf().set(opt).from(element).save();
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                // Restore styles after PDF generation
+                glassElements.forEach(el => {
+                    el.style.backdropFilter = '';
+                    el.style.webkitBackdropFilter = '';
+                    el.style.backgroundColor = '';
+                });
+            });
         }
         
         let statesDistrictsMap = {};
@@ -718,10 +749,55 @@
             }
         }
 
+        async function fetchAndRenderAccuracies() {
+            try {
+                let res = await fetch('static/models/metrics.json');
+                let data = await res.json();
+                
+                let cropMetrics = data["Crop Recommendation"];
+                let labels = Object.keys(cropMetrics);
+                let values = Object.values(cropMetrics);
+
+                const ctx = document.getElementById('accuracyChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Accuracy (%)',
+                            data: values,
+                            backgroundColor: [
+                                'rgba(52, 211, 153, 0.8)', // LightGBM (Green)
+                                'rgba(59, 130, 246, 0.8)'  // CatBoost (Blue)
+                            ],
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: { 
+                                min: 90, 
+                                max: 100,
+                                title: { display: true, text: 'Accuracy (%)' }
+                            }
+                        }
+                    }
+                });
+            } catch(e) {
+                console.error("Could not fetch metrics", e);
+            }
+        }
+
         // Init Language and Data
         window.onload = () => {
             changeLanguage();
             loadStatesDistricts();
+            fetchAndRenderAccuracies();
         }
     </script>
 </body>
